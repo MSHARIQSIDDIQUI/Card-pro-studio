@@ -1,0 +1,21 @@
+{
+  "name": "Card Studio Pro \u2014 Testing",
+  "short_name": "Card Studio Pro",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "theme_color": "#1b2130",
+  "background_color": "#12151e",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
