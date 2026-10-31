@@ -67,7 +67,7 @@ button:hover{background:#e9eef5}
 .event-page{display:flex;align-items:center;gap:5px;background:#f6f8fb;border:1px solid #dfe5ed;border-radius:8px;padding:5px}
 .event-page button{padding:6px;font-size:11px}.event-page .event-select{flex:1;text-align:left;overflow:hidden;text-overflow:ellipsis}
 .event-page.active{border-color:#b58b58;background:#fff8ed}
-</style></head><body><div class="release-bar"><strong>Card Studio Pro • Phase 3.5.3 • Testing PWA</strong><button id="cspUpdate" type="button">Check for updates</button><span id="cspUpdateStatus">Offline-capable after first hosted visit</span></div>
+</style></head><body><div class="release-bar"><strong>Card Studio Pro • Phase 3.5.3 • Mobile Touch Fix 1</strong><button id="cspUpdate" type="button">Check for updates</button><span id="cspUpdateStatus">Offline-capable after first hosted visit</span></div>
 <div class="bar"><strong>✦ Card Studio Pro <span class="tag">Phase 3 · Premium Studio</span></strong>
 <button id="new">New</button><button id="save" class="primary">Save Project</button><button id="openSaved">Open Saved</button><button id="backup">Backup JSON</button><button id="import">Import JSON</button><button id="png">Export PNG</button><button id="svg">Export SVG</button></div>
 <div class="workspace"><aside class="left"><h3>Curated Collections</h3><p class="tag">Choose a design to begin. Every text and ornament remains editable.</p><div id="templates" class="templates"></div><div class="sep"></div><h3>Luxury Floral Collection <span class="tag">Phase 3.2</span></h3><p class="tag">Coordinated editable designs for invitations, RSVP, thank-you cards and event menus.</p><div id="luxuryTemplates" class="templates"></div><div class="sep"></div><h3>Add objects</h3><div class="panelbuttons"><button id="addText">+ Text</button><button id="addRect">+ Shape</button><button id="addCircle">+ Circle</button><button id="addImage">+ Photo</button></div><input class="topfile" type="file" id="imageInput" accept="image/*"><input class="topfile" type="file" id="jsonInput" accept=".json,application/json"><div class="sep"></div><h3>Botanical Atelier <span class="tag">New</span></h3>
@@ -370,7 +370,23 @@ function serialized(){const out=svg.cloneNode(true);injectFontStyles(out);out.qu
 $('svg').onclick=()=>{download(new Blob([serialized()],{type:'image/svg+xml;charset=utf-8'}),'CardStudioPro_Card.svg');notify('SVG exported')};
 $('png').onclick=()=>{const s=serialized(),url=URL.createObjectURL(new Blob([s],{type:'image/svg+xml;charset=utf-8'})),img=new Image();img.onload=()=>{const c=document.createElement('canvas');c.width=project.width*2;c.height=project.height*2;const ctx=c.getContext('2d');ctx.scale(2,2);ctx.drawImage(img,0,0);URL.revokeObjectURL(url);c.toBlob(b=>{if(b){download(b,'CardStudioPro_Card.png');notify('✓ PNG exported')}else notify('PNG export unavailable; try SVG')},'image/png')};img.onerror=()=>{URL.revokeObjectURL(url);notify('PNG export failed. Try SVG or remove the uploaded image.')};img.src=url};
 function point(e){const p=svg.createSVGPoint();p.x=e.clientX;p.y=e.clientY;const m=svg.getScreenCTM();return m?p.matrixTransform(m.inverse()):{x:0,y:0}}
-svg.addEventListener('pointerdown',e=>{const g=e.target.closest('[data-id]');if(!g){select(null);return}const id=g.getAttribute('data-id');select(id);const l=current(),p=point(e);drag={id,start:p,x:l.x,y:l.y,changed:false};try{svg.setPointerCapture(e.pointerId)}catch(_){}});
+function mobileHitTest(e){
+ const rect=svg.getBoundingClientRect();
+ if(!rect.width||!rect.height)return null;
+ const x=(e.clientX-rect.left)*project.width/rect.width;
+ const y=(e.clientY-rect.top)*project.height/rect.height;
+ for(const l of [...project.layers].reverse()){
+  const w=Math.max(Number(l.w)||0,l.type==='text'?Math.max(110,(l.value||'').length*(Number(l.size)||24)*.54):55);
+  const h=Math.max(Number(l.h)||0,l.type==='text'?(Number(l.size)||24)*1.7:55);
+  const pad=e.pointerType==='touch'?22:7;
+  const dx=x-l.x,dy=y-l.y,angle=-(Number(l.rotation)||0)*Math.PI/180;
+  const rx=dx*Math.cos(angle)-dy*Math.sin(angle),ry=dx*Math.sin(angle)+dy*Math.cos(angle);
+  if(Math.abs(rx)<=w/2+pad&&Math.abs(ry)<=h/2+pad)return l.id;
+ }
+ return null;
+}
+svg.addEventListener('pointerdown',e=>{const g=e.target.closest('[data-id]');const id=g?.getAttribute('data-id')||mobileHitTest(e);if(!id){select(null);return}select(id);const l=current(),p=point(e);drag={id,start:p,x:l.x,y:l.y,changed:false};try{svg.setPointerCapture(e.pointerId)}catch(_){}});
+svg.addEventListener('click',e=>{if(e.target.closest('[data-id]'))return;const id=mobileHitTest(e);if(id)select(id)});
 svg.addEventListener('pointermove',e=>{if(!drag)return;const p=point(e),l=current();if(!l||l.id!==drag.id)return;if(!drag.changed){snapshot();drag.changed=true}l.x=Math.round(drag.x+p.x-drag.start.x);l.y=Math.round(drag.y+p.y-drag.start.y);draw();$('x').value=l.x;$('y').value=l.y});
 function endDrag(){if(drag?.changed){renderLayers();$('status').textContent='Modified · Not saved'}drag=null}svg.addEventListener('pointerup',endDrag);svg.addEventListener('pointercancel',endDrag);
 presets.forEach((p,i)=>{
